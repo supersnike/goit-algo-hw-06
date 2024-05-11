@@ -9,7 +9,7 @@ class Animal:
     def change_weight(self, new_weight):
         self.weight = new_weight
 
-
+#test
 animal = Animal("Simon", 10)
 print("Кличка тварини:", animal.nickname)  # Очікуємо "Simon"
 animal.change_weight(12)
