@@ -6,11 +6,28 @@ class Animal:
     def say(self):
         pass
 
-    def change_weight(self, new_weight):
-        self.weight = new_weight
+    def change_weight(self, weight):
+        self.weight = weight
 
-#test
-animal = Animal("Simon", 10)
-print("Кличка тварини:", animal.nickname)  # Очікуємо "Simon"
-animal.change_weight(12)
-print("Оновлена вага:", animal.weight)
+
+class Cat(Animal):
+    def say(self):
+        return "Meow"
+
+
+class CatDog:
+    def __init__(self, nickname, weight):
+        self.cat = Cat(nickname, weight)  # Створення екземпляру класу Cat
+
+    def say(self):
+        return self.cat.say()  # Делегування методу say до класу Cat
+
+    def change_weight(self, weight):
+        self.cat.change_weight(weight)  # Делегування методу change_weight до класу Cat
+
+
+# Приклад використання
+catdog = CatDog("Fluffy", 5)
+print(catdog.say())  # Виведе: Meow
+catdog.change_weight(6)
+print(catdog.cat.weight)  # Виведе: 6
