@@ -12,9 +12,12 @@ class Name(Field):
 
 class Phone(Field):
     def __init__(self, value):
-        if not isinstance(value, str) or len(value) != 10 or not value.isdigit():
-            raise ValueError("Phone number must be a string of 10 digits")
-        super().__init__(value)
+        value_str = str(value)  # Перетворення значення на рядок
+        if len(value_str) != 10:
+            raise ValueError("Телефон повинен містити рівно 10 цифр")
+        super().__init__(value_str)
+
+
 
 class Record:
     def __init__(self, name):
@@ -34,7 +37,7 @@ class Record:
                 break
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(str(p) for p in self.phones)}"
+        return f"Контакт: {self.name.value}, Телефон: {'; '.join(str(p) for p in self.phones)}"
 
 class AddressBook(UserDict):
     def add_record(self, record):
@@ -48,9 +51,17 @@ class AddressBook(UserDict):
 
     def search_by_phone(self, phone):
         for record in self.data.values():
-            if phone in [str(p) for p in record.phones]:
-                return record
+            for p in record.phones:
+                if str(p) == phone:
+                    return record
         return None
+
+    def delete_contact(self, name):
+        if name in self.data:
+            del self.data[name]
+            return f"Запис '{name}' видалено."
+        else:
+            return f"Запис '{name}' не знайдено."
 
 def parse_input(user_input):
     parts = user_input.strip().split()
@@ -66,13 +77,16 @@ def input_error(func):
         try:
             return func(*args, **kwargs)
         except KeyError:
-            return "Contact not found."
+            return "Контакт не знайдено."
         except IndexError:
-            return "Invalid command. Usage: command args"
-        except ValueError:
-            return "Invalid input. Please enter valid arguments."
+            return "Не вірна команда."
+        except ValueError as ve:
+            if str(ve) == "Телефон повинен містити рівно 10 цифр":
+                return "Телефонний номер повинен містити рівно 10 цифр."
+            else:
+                return "Не вірний ввод. Додайте данні."
         except Exception as e:
-            return f"An error occurred: {e}"
+            return f"Помилка: {e}"
     return inner
 
 @input_error
@@ -81,11 +95,11 @@ def add_contact(args, address_book):
     if not name or not phone:
         raise ValueError
     if name in address_book.data:
-        return f"Contact '{name}' already exists."
+        return f"Контакт '{name}' вже присутній."
     record = Record(name)
     record.add_phone(phone)
     address_book.add_record(record)
-    return "Contact added."
+    return f"Контакт '{name}' додано."
 
 @input_error
 def change_contact_phone(args, address_book):
@@ -95,7 +109,7 @@ def change_contact_phone(args, address_book):
     record = address_book.search_by_name(name)
     if record:
         record.edit_phone(record.phones[0].value, phone)
-        return f"Phone number for contact '{name}' changed."
+        return f"Номер телефону контакту '{name}' змінено."
     else:
         raise KeyError
 
@@ -106,30 +120,30 @@ def display_contact_phone(args, address_book):
     name = args[0]
     record = address_book.search_by_name(name)
     if record:
-        return f"Phone number for contact '{name}': {record.phones[0].value}"
+        return f"Телефонний номер контакту '{name}': {record.phones[0].value}"
     else:
         raise KeyError
 
 def display_all_contacts(address_book):
     if address_book.data:
-        print("All contacts:")
+        print("Всі контакти:")
         for name, record in address_book.data.items():
             print(record)
     else:
-        print("No contacts found.")
+        print("Не знайдено жодного контакту.")
 
 def main():
     address_book = AddressBook()
-    print("Welcome to the assistant bot!")
+    print("Вас вітає бот асистент!")
     while True:
-        user_input = input("Enter a command: ")
+        user_input = input("Введіть команду: ")
         command, args = parse_input(user_input)
 
         if command in ["close", "exit"]:
-            print("Good bye!")
+            print("Хай щастить!")
             break
         elif command == "hello":
-            print("How can I help you?")
+            print("Чим я можу допомогти?")
         elif command == "add":
             print(add_contact(args, address_book))
         elif command == "change":
@@ -138,8 +152,10 @@ def main():
             print(display_contact_phone(args, address_book))
         elif command == "all":
             display_all_contacts(address_book)
+        elif command == "delete":
+            print( address_book.delete_contact(args[0]))
         else:
-            print("Invalid command.")
+            print("Не вірна команда.")
 
 if __name__ == "__main__":
     main()
