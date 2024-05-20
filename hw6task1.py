@@ -7,16 +7,23 @@ class Field:
     def __str__(self):
         return str(self.value)
 
+
 class Name(Field):
-    pass
+    def __init__(self, value):
+        if not value:
+            raise ValueError("Ім'я не може бути порожнім")
+        super().__init__(value)
+
 
 class Phone(Field):
     def __init__(self, value):
-        value_str = str(value)  # Перетворення значення на рядок
-        if len(value_str) != 10:
-            raise ValueError("Телефон повинен містити рівно 10 цифр")
-        super().__init__(value_str)
+        if not self.validate_phone(value):
+            raise ValueError("Номер телефону повинен містити 10 цифр")
+        super().__init__(value)
 
+    @staticmethod
+    def validate_phone(value):
+        return value.isdigit() and len(value) == 10
 
 
 class Record:
@@ -24,138 +31,93 @@ class Record:
         self.name = Name(name)
         self.phones = []
 
-    def add_phone(self, phone):
-        self.phones.append(Phone(phone))
+    def add_phone(self, phone_number):
+        self.phones.append(Phone(phone_number))
 
-    def delete_phone(self, phone):
-        self.phones = [p for p in self.phones if str(p) != phone]
-
-    def edit_phone(self, old_phone, new_phone):
-        for i, phone in enumerate(self.phones):
-            if str(phone) == old_phone:
-                self.phones[i] = Phone(new_phone)
+    def remove_phone(self, phone_number):
+        phone_to_remove = None
+        for phone in self.phones:
+            if phone.value == phone_number:
+                phone_to_remove = phone
                 break
+        if phone_to_remove:
+            self.phones.remove(phone_to_remove)
+
+    def edit_phone(self, old_phone_number, new_phone_number):
+        for phone in self.phones:
+            if phone.value == old_phone_number:
+                phone.value = new_phone_number
+                return
+        raise ValueError("Номер телефону не знайдено")
+
+    def find_phone(self, phone_number):
+        for phone in self.phones:
+            if phone.value == phone_number:
+                return phone
+        return None
 
     def __str__(self):
-        return f"Контакт: {self.name.value}, Телефон: {'; '.join(str(p) for p in self.phones)}"
+        phones_str = ', '.join(phone.value for phone in self.phones)
+        return f"Ім'я контакту: {self.name.value}, телефони: {phones_str}"
+
 
 class AddressBook(UserDict):
     def add_record(self, record):
         self.data[record.name.value] = record
 
-    def delete_record(self, name):
-        del self.data[name]
-
-    def search_by_name(self, name):
+    def find(self, name):
         return self.data.get(name, None)
 
-    def search_by_phone(self, phone):
-        for record in self.data.values():
-            for p in record.phones:
-                if str(p) == phone:
-                    return record
-        return None
-
-    def delete_contact(self, name):
+    def delete(self, name):
         if name in self.data:
             del self.data[name]
-            return f"Запис '{name}' видалено."
         else:
-            return f"Запис '{name}' не знайдено."
+            raise KeyError("Контакт не знайдено")
 
-def parse_input(user_input):
-    parts = user_input.strip().split()
-    if not parts:
-        return "", []
-    cmd = parts[0].strip().lower()
-    args = parts[1:]
-    return cmd, args
 
-def input_error(func):
-    """Декоратор для обробки помилок вводу."""
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyError:
-            return "Контакт не знайдено."
-        except IndexError:
-            return "Не вірна команда."
-        except ValueError as ve:
-            if str(ve) == "Телефон повинен містити рівно 10 цифр":
-                return "Телефонний номер повинен містити рівно 10 цифр."
-            else:
-                return "Не вірний ввод. Додайте данні."
-        except Exception as e:
-            return f"Помилка: {e}"
-    return inner
+# Тестування реалізації
 
-@input_error
-def add_contact(args, address_book):
-    name, phone = args
-    if not name or not phone:
-        raise ValueError
-    if name in address_book.data:
-        return f"Контакт '{name}' вже присутній."
-    record = Record(name)
-    record.add_phone(phone)
-    address_book.add_record(record)
-    return f"Контакт '{name}' додано."
+# Створення нової адресної книги
+book = AddressBook()
 
-@input_error
-def change_contact_phone(args, address_book):
-    if len(args) != 2:
-        raise IndexError
-    name, phone = args
-    record = address_book.search_by_name(name)
-    if record:
-        record.edit_phone(record.phones[0].value, phone)
-        return f"Номер телефону контакту '{name}' змінено."
+# Створення запису для John
+john_record = Record("John")
+john_record.add_phone("1234567890")
+john_record.add_phone("5555555555")
+
+# Додавання запису John до адресної книги
+book.add_record(john_record)
+
+# Створення та додавання нового запису для Jane
+jane_record = Record("Jane")
+jane_record.add_phone("9876543210")
+book.add_record(jane_record)
+
+# Виведення всіх записів у адресній книзі
+print("Всі контакти в адресній книзі:")
+for name, record in book.data.items():
+    print(record)
+
+# Знаходження та редагування телефону для John
+john = book.find("John")
+john.edit_phone("1234567890", "1112223333")
+
+print("\nКонтакт John після редагування телефону:")
+print(john)  # Виведення: Ім'я контакту: John, телефони: 1112223333, 5555555555
+
+# Пошук конкретного телефону у записі John
+found_phone = john.find_phone("5555555555")
+print(f"\nЗнайдено номер телефону для контакту {john.name.value}: {found_phone}")  # Виведення: John: 5555555555
+
+# Видалення запису Jane
+book.delete("Jane")
+
+# Перевірка видалення Jane
+try:
+    jane = book.find("Jane")
+    if jane is None:
+        print("\nJane не знайдено в адресній книзі")
     else:
-        raise KeyError
-
-@input_error
-def display_contact_phone(args, address_book):
-    if len(args) != 1:
-        raise IndexError
-    name = args[0]
-    record = address_book.search_by_name(name)
-    if record:
-        return f"Телефонний номер контакту '{name}': {record.phones[0].value}"
-    else:
-        raise KeyError
-
-def display_all_contacts(address_book):
-    if address_book.data:
-        print("Всі контакти:")
-        for name, record in address_book.data.items():
-            print(record)
-    else:
-        print("Не знайдено жодного контакту.")
-
-def main():
-    address_book = AddressBook()
-    print("Вас вітає бот асистент!")
-    while True:
-        user_input = input("Введіть команду: ")
-        command, args = parse_input(user_input)
-
-        if command in ["close", "exit"]:
-            print("Хай щастить!")
-            break
-        elif command == "hello":
-            print("Чим я можу допомогти?")
-        elif command == "add":
-            print(add_contact(args, address_book))
-        elif command == "change":
-            print(change_contact_phone(args, address_book))
-        elif command == "phone":
-            print(display_contact_phone(args, address_book))
-        elif command == "all":
-            display_all_contacts(address_book)
-        elif command == "delete":
-            print( address_book.delete_contact(args[0]))
-        else:
-            print("Не вірна команда.")
-
-if __name__ == "__main__":
-    main()
+        print(jane)
+except KeyError:
+    print("\nJane не знайдено в адресній книзі")
